@@ -1,0 +1,37 @@
+# This sample docker compose file starts a Cloud Pub/Sub emulator and automatically creates a topic and subscription of desired names upon startup.
+services:
+  pubsub:
+    image: google/cloud-sdk:emulators
+    command:
+      - /bin/bash
+      - -ceu
+      - |
+        set -m
+        gcloud beta emulators pubsub start --project=$$CLOUDSDK_CORE_PROJECT --host-port=0.0.0.0:$$PUBSUB_EMULATOR_HOST_PORT --quiet &
+        while ! echo > /dev/tcp/localhost/$$PUBSUB_EMULATOR_HOST_PORT; do sleep 1; done
+        gcloud pubsub topics create $$TOPIC
+        gcloud pubsub subscriptions create $$SUBSCRIPTION --topic=$$TOPIC
+        fg %1
+    ports:
+        # Point your Cloud Pub/Sub SDK client to this port by exporting the environment variable
+        # `export PUBSUB_EMULATOR_HOST=localhost:8085` outside of the docker compose environment
+        # or by setting the `PUBSUB_EMULATOR_HOST=pubsub:8085` environment variable in the service
+        # that uses the Cloud Pub/Sub SDK client in this docker compose environment.
+      - 8085:8085
+    environment:
+      # Equivalent to `gcloud config configurations activate default`
+      CLOUDSDK_ACTIVE_CONFIG_NAME: default
+      # Equivalent to `gcloud config set auth/disable_credentials true`
+      CLOUDSDK_AUTH_DISABLE_CREDENTIALS: true
+      # Equivalent to `gcloud config set account emulator@example.com`
+      CLOUDSDK_CORE_ACCOUNT: emulator@example.com
+      # Equivalent to `gcloud config set project test`
+      CLOUDSDK_CORE_PROJECT: test
+      # Equivalent to `gcloud config set api_endpoint_overrides/pubsub http://localhost:8085/`
+      # Must be an absolute URI that begins with https:// and ends with a trailing /.
+      CLOUDSDK_API_ENDPOINT_OVERRIDES_PUBSUB: http://localhost:8085/
+      PUBSUB_EMULATOR_HOST_PORT: "8085"
+      PUBSUB_EMULATOR_HOST: localhost:8085
+      # Change these values `TOPIC` and `SUBSCRIPTION` to match your desired topic and subscription names
+      TOPIC: test
+      SUBSCRIPTION: test
